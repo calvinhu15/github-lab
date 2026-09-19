@@ -244,6 +244,27 @@
       font-size: 0.95rem;
     }
 
+    .clear-completed-button {
+      display: block;
+      margin: 12px auto 0;
+      padding: 6px 12px;
+      color: var(--danger);
+      background: transparent;
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .clear-completed-button:hover:not(:disabled) {
+      background: var(--danger-hover);
+    }
+
+    .clear-completed-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
     .visually-hidden {
       position: absolute;
       width: 1px;
@@ -308,6 +329,12 @@
 
     <footer class="app-footer">
       <span id="remaining-count">未完成:0 項</span>
+      <button
+        id="clear-completed"
+        class="clear-completed-button"
+        type="button"
+        aria-label="清除所有已完成事項"
+      >清除已完成</button>
     </footer>
   </main>
 
@@ -317,13 +344,28 @@
     const list = document.getElementById("todo-list");
     const emptyState = document.getElementById("empty-state");
     const remainingCount = document.getElementById("remaining-count");
+    const clearCompletedButton = document.getElementById("clear-completed");
     const filterButtons = document.querySelectorAll(".filter-button");
     const themeToggle = document.getElementById("theme-toggle");
     const themeIcon = document.getElementById("theme-icon");
     const themeLabel = document.getElementById("theme-label");
 
-    let todos = [];
+    const storageKey = "todo-app-items";
+    let todos = loadTodos();
     let currentFilter = "all";
+
+    function loadTodos() {
+      try {
+        const storedTodos = JSON.parse(localStorage.getItem(storageKey));
+        return Array.isArray(storedTodos) ? storedTodos : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveTodos() {
+      localStorage.setItem(storageKey, JSON.stringify(todos));
+    }
 
     function applyTheme(theme) {
       document.documentElement.dataset.theme = theme;
@@ -399,6 +441,7 @@
       emptyState.hidden = visibleTodos.length > 0;
       emptyState.textContent = getEmptyMessage();
       remainingCount.textContent = `未完成:${todos.filter((todo) => !todo.completed).length} 項`;
+      clearCompletedButton.disabled = !todos.some((todo) => todo.completed);
     }
 
     function setFilter(nextFilter) {
@@ -426,6 +469,7 @@
         text,
         completed: false,
       });
+      saveTodos();
       render();
       input.value = "";
       input.focus();
@@ -444,6 +488,7 @@
       todos = todos.map((todo) =>
         todo.id === item.dataset.id ? { ...todo, completed: event.target.checked } : todo
       );
+      saveTodos();
       render();
     });
 
@@ -458,6 +503,24 @@
       }
 
       todos = todos.filter((todo) => todo.id !== item.dataset.id);
+      saveTodos();
+      render();
+    });
+
+    clearCompletedButton.addEventListener("click", () => {
+      const completedCount = todos.filter((todo) => todo.completed).length;
+
+      if (completedCount === 0) {
+        return;
+      }
+
+      const shouldClear = confirm(`確定要清除 ${completedCount} 項已完成事項嗎?`);
+      if (!shouldClear) {
+        return;
+      }
+
+      todos = todos.filter((todo) => !todo.completed);
+      saveTodos();
       render();
     });
 
